@@ -10,24 +10,28 @@
 #include <stdbool.h> //bool
 
 static unsigned int N=100u;
-static bool Border;
-
+static bool Border=true;
+static double Range = 2.;
 static void Display(void){
     struct winsize sz;
     ioctl(0, TIOCGWINSZ, &sz );
     --sz.ws_row;
-    if(2u*sz.ws_row<=sz.ws_col)
-        sz.ws_col = sz.ws_row*2u;
-    else
-        sz.ws_row = sz.ws_col/2u;
+    double ratioX, ratioY;
+    if(2u*sz.ws_row<=sz.ws_col){
+        ratioX=(double)sz.ws_col/(2.*(double)sz.ws_row);
+        ratioY=1.;
+    }else{
+        ratioX=1.;
+        ratioY=2.*(double)sz.ws_row/(double)sz.ws_col;
+    }
     const unsigned int midX = sz.ws_col/2u;
     const unsigned int midY = sz.ws_row/2u;
     for(unsigned int i = 0u; i<sz.ws_row; ++i){
-        const double Yval = ((double)i-(double)midY)/((double)midY/2.);
+        const double Yval = ratioY * Range * ((double)i-(double)midY)/((double)midY);
 
         for(unsigned int j = 0u; j<sz.ws_col; ++j){
 
-            const double Xval = ((double)j-(double)midX)/((double)midX/2.);
+            const double Xval = ratioX * Range * ((double)j-(double)midX)/((double)midX);
 
             const double complex C = Xval + Yval * I;
             double complex Z = C;
@@ -45,6 +49,7 @@ static void Display(void){
         }
         putchar('\n');
     }
+    printf("%lf,%lf,%u,%u ",ratioX,ratioY,sz.ws_col,sz.ws_row);
 }
 
 static void ReDisplay(int ignored){
@@ -52,6 +57,7 @@ static void ReDisplay(int ignored){
     const struct timespec K = {0l,100000000l};assert(K.tv_nsec <= 999999999l);
     nanosleep(&K,NULL); // to avoid constant flashing when rendering (100ms)
     Display();
+    puts("lmqo");
 }
 
 int main(int argc, char**argv){
@@ -62,15 +68,21 @@ int main(int argc, char**argv){
     sigaction(SIGWINCH,&sa,NULL);
     Display();
     while(1){
-        printf("Iterations: %u, NoBorder: %s, Input (q/nb/b/it=) : ", N, !Border?"True":"False");
+        printf("Iterations: %u, Range: %lf, NoBorder: %s, Input (q/nb/b/it=/r=) : ", N, Range, !Border?"True":"False");
         char input[14];
         scanf("%13s",&input);
         if(input[0] == 'q')exit(0);
-        if(input[0] == 'n' && input[1] == 'b')Border=0u;
-        if(input[0] == 'b')Border=1u;
+        if(input[0] == 'n' && input[1] == 'b')Border=false;
+        if(input[0] == 'b')Border=true;
         if(input[0] == 'i' && input[1] == 't' && input[2] == '='){
             unsigned long Q=strtoul(&input[3],NULL,0);
             if(Q<=UINT_MAX)N=(unsigned int)Q;
         }
+        if(input[0] == 'r' && input[1] == '='){
+            double Q=strtod(&input[2],NULL);
+            if(Q>0)Range=Q;
+        }
+        system("clear");
+        Display();
     }
 }
